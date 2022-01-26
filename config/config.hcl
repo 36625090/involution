@@ -5,7 +5,7 @@ authorization {
   pkcs1_public_key = "MIGJAoGBAOVxpmJr4ELzX67oQl8YCrHPk61sRwESc8kAFDm9PwrY/Wd/PqBVsCQUFYBmo5dSukdJ/ZkeyXqA9pArnlqn/G42EVUjPPNURiex4W6LbSHXr/96Wt/0Ov7d+8ETkmLUZ+QsdB+9S6CrkG9pfhdUKLBoJ/YPujOhDBQvWNQSnXzXAgMBAAE="
   timeout = 86400000
   anon_methods = ["account.user.login"]
-  #默认的身份校验侧裂，可选值有 allow deny （未配置视为deny）
+  #默认的身份校验策略，可选值有 allow deny （未配置视为deny）
   default_policy = "deny"
 }
 
