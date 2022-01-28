@@ -108,8 +108,8 @@ github.com/go-various/consul v1.0.3 h1:CVlTDwIPJu3hYRGAiG6srLIgoYl3MJyy4wSY8lnNN
 github.com/go-various/consul v1.0.3/go.mod h1:+jz2lDXIhPVi+CxB1Vp7SmQi0sxawvYSZ7CNvVqMCTs=
 github.com/go-various/micro v1.0.1 h1:KgJt5OFUH7jZVbn/mt828AYXqhaaj6QvYrSZHO8taYo=
 github.com/go-various/micro v1.0.1/go.mod h1:Hlxg3PWoIwIX4D9WGKZ6fknoEMU6rqzrQ8qBhAMZVUI=
-github.com/go-various/redisplus v1.0.2 h1:5Lx9SzaE8TnmqQxDZS3dyAZBAFzPK6K2DPVhZuKZREs=
-github.com/go-various/redisplus v1.0.2/go.mod h1:PV0Npw+auh1OOZgL+p+Q+9lFI+EhwUMw8WsJ4hSmTTw=
+github.com/go-various/redisplus v1.0.3 h1:uTxTJIW2OUBmT3iUxnabr6JSaoeNO6mXqUZ6WADHHuI=
+github.com/go-various/redisplus v1.0.3/go.mod h1:KRgtQRktsIlhNM4iZ+g3frFUOeuhf6YjrrauX3lTMug=
 github.com/go-various/xorm v0.0.0-20220126094347-50de33934412 h1:LLzJFEduvHpBGM+1RDJIE2DGi1Z3yJQ0VjrAhxbvaT0=
 github.com/go-various/xorm v0.0.0-20220126094347-50de33934412/go.mod h1:wKkPa+gDWbvp34Irm9Vk4+MeyM4mwDAw09iUj+FbeB8=
 github.com/goccy/go-json v0.8.1 h1:4/Wjm0JIJaTDm8K1KcGrLHJoa8EsJ13YWeX+6Kfq6uI=

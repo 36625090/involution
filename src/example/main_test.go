@@ -26,10 +26,10 @@ func mockServer() error {
 		"--http.path","/account",
 		"--http.port","8081",
 		"--http.cors",
-		"--http.logging",
+		"--http.trace",
 		"--log.path",
 		"../logs",
-		"--app","account",
+		"--app","example",
 	}
 	gin.SetMode("release")
 	parser := flags.NewParser(&opts, flags.Default)
@@ -45,34 +45,46 @@ func mockServer() error {
 		return err
 	}
 
-	if err := inv.RegisterService(); err != nil {
-		log.Fatal("register service:", err)
+	err = inv.Start()
+	if err != nil {
 		return err
 	}
-
-	return inv.Start()
+	return nil
 }
 
-func runCalls(logger *log.Logger) {
+func runCalls(b *testing.B) {
 
 
-	n := runtime.NumCPU() -2
+	n := runtime.NumCPU() -4
 	since := time.Now()
-	count := 10000
+	count := 10
 	var wg sync.WaitGroup
 	wg.Add(n)
 
 	call := func() {
-		cli := http.DefaultClient
-		body := `{"method":"account.user.logout","data":"{}","timestamp":"20201029150000","version":"1.0","sign":"D41D8CD98F00B204E9800998ECF8427E","sign_type":"md5"}`
+		cli := http.Client{
+			Transport:     &http.Transport{
+			},
+			Timeout:       time.Second * 30,
+		}
+		body := `{"method":"account.user.login","data":"{\"mobile\":\"12312312123\",\"source\":\"122\",\"open_id\":null,\"union_id\":null,\"verify_code\":\"222\"}","timestamp":161239123,"version":"1.0","sign":"D41D8CD98F00B204E9800998ECF8427E","sign_type":"md5"}`
 		defer wg.Done()
-		for i := 0; i < count; i++ {
 
-			if _, err := cli.Post("http://localhost:8081/account/api", "application/json", bytes.NewReader([]byte(body))); err != nil {
-				logger.Fatal(err)
+
+		for i := 0; i < count; i++ {
+			var reader = bytes.NewReader([]byte(body))
+			req, err := http.NewRequest("POST", "http://localhost:8080/example/api", reader)
+			if err != nil {
 				return
 			}
-			time.Sleep(time.Millisecond * 10)
+			req.Header.Set("Content-Type", "application/json")
+			if resp, err := cli.Do(req); err != nil {
+				b.Error(err)
+			}else {
+				data, _  := ioutil.ReadAll(resp.Body)
+				b.Log(string(data))
+				resp.Body.Close()
+			}
 		}
 	}
 	for i:=0; i < n;i++{
@@ -81,20 +93,20 @@ func runCalls(logger *log.Logger) {
 	}
 
 	wg.Wait()
-	logger.Println("calls ",count * n,"finished time latency:", time.Now().Sub(since))
+	b.Log("calls ",count * n,"finished time latency:", time.Now().Sub(since))
 }
 
 func BenchmarkServer(b *testing.B) {
-	go func() {
-		if err := mockServer(); err != nil {
-			b.Fatal(err)
-			return
-		}
-	}()
+	//go func() {
+	//	if err := mockServer(); err != nil {
+	//		b.Fatal(err)
+	//		return
+	//	}
+	//}()
 	time.Sleep(time.Second * 3)
-	runCalls(log.Default())
+	runCalls(b)
 	cli := http.DefaultClient
-	resp, err := cli.Get("http://localhost:8081/account/health")
+	resp, err := cli.Get("http://localhost:8080/example/health")
 	if err != nil {
 		b.Fatal(err)
 	}

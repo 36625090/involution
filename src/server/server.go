@@ -35,7 +35,7 @@ type Server struct {
 	service       *consul.Service
 	consulClient  consul.Client
 	globalConfig  *config.GlobalConfig
-
+	signalChan    chan os.Signal
 }
 
 func (m *Server) AddLoggerSinks(sinks ...hclog.SinkAdapter) {
@@ -44,25 +44,28 @@ func (m *Server) AddLoggerSinks(sinks ...hclog.SinkAdapter) {
 	}
 }
 
-func NewServer(opts *option.Options, cfg *config.GlobalConfig ,cl consul.Client, logger hclog.InterceptLogger) *Server {
+func NewServer(opts *option.Options, cfg *config.GlobalConfig, cl consul.Client, logger hclog.InterceptLogger) *Server {
+
+	gin.SetMode(gin.ReleaseMode)
+	en := gin.New()
+	if opts.Http.Cors {
+		en.Use(Cors())
+	}
 
 	return &Server{
-		ctx:              context.Background(),
-		globalConfig:	  cfg,
-		opts:             opts,
-		consulClient:     cl,
-		logger:           logger,
-		connection:       &Connection{},
-		backends:         map[string]logical.Backend{},
+		ctx:           context.Background(),
+		globalConfig:  cfg,
+		opts:          opts,
+		consulClient:  cl,
+		logger:        logger,
+		connection:    &Connection{},
+		backends:      map[string]logical.Backend{},
+		httpTransport: transport.NewTransport(en, cfg.Transport, logger),
 	}
 }
 
 func (m *Server) Initialize() error {
-	gin.SetMode(gin.ReleaseMode)
-	en := gin.New()
-	en.Use(gin.Recovery())
 
-	m.httpTransport = transport.NewTransport(en, m.globalConfig.Transport, m.logger)
 	if err := m.initContext(); err != nil {
 		return err
 	}
@@ -94,14 +97,15 @@ func (m *Server) Start() error {
 		return err
 	}
 	m.netListener = l
-
 	m.httpServer = &http.Server{
 		Addr:         addr,
 		Handler:      m.httpTransport,
 		IdleTimeout:  time.Second * time.Duration(m.opts.Http.IdleTimeout),
 		ReadTimeout:  time.Second * time.Duration(m.opts.Http.ReadTimeout),
 		WriteTimeout: time.Second * time.Duration(m.opts.Http.WriteTimeout),
+		ErrorLog:     m.logger.StandardLogger(&hclog.StandardLoggerOptions{}),
 	}
+	m.httpServer.SetKeepAlivesEnabled(m.opts.Http.KeepAlive)
 
 	go func() {
 		if err := m.httpServer.Serve(m.netListener); err != nil && err != http.ErrServerClosed {
@@ -110,24 +114,20 @@ func (m *Server) Start() error {
 		}
 	}()
 
-	if m.consulClient != nil{
-		if err := m.registerService(m.opts.Profile); err != nil {
-			return err
-		}
+	if err := m.registerService(m.opts.Profile); err != nil {
+		return err
 	}
 
 	m.logger.Info("server start completed")
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
+	m.signalChan = make(chan os.Signal)
+	signal.Notify(m.signalChan, os.Interrupt)
+	<-m.signalChan
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	m.logger.Info("Server shutting")
 
-	if m.consulClient != nil{
-		m.consulClient.DeRegister(m.service)
-	}
+	m.unRegisterService()
 
 	if err := m.httpServer.Shutdown(ctx); err != nil {
 		log.Fatal("server shutdown:", err)
@@ -139,9 +139,20 @@ func (m *Server) Start() error {
 	return nil
 }
 
+func (m *Server) Stop() {
+	if nil == m.signalChan {
+		return
+	}
+	close(m.signalChan)
+}
+
 func (m *Server) Cleanup() {
-	m.httpServer.Close()
-	m.netListener.Close()
+	if nil != m.httpServer{
+		m.httpServer.Close()
+	}
+	if m.netListener != nil{
+		m.netListener.Close()
+	}
 	for _, backend := range m.backends {
 		backend.Cleanup(context.Background())
 	}

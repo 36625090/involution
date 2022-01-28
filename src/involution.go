@@ -16,8 +16,8 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	_ "runtime/pprof"
 )
-
 
 
 type Involution interface {
@@ -32,7 +32,7 @@ type Involution interface {
 
 	//Start 启动服务
 	Start() error
-
+	Stop()
 	//AddLoggerSinks register sinks
 	AddLoggerSinks(sinks ...hclog.SinkAdapter)
 }

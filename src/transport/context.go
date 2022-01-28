@@ -26,8 +26,6 @@ func NewContext(ctx *gin.Context) *Context {
 			Timestamp: time.Now().UnixMilli(),
 		},
 	}
-
-	context.response.TraceID = context.GetTraceID()
 	return context
 }
 
@@ -100,7 +98,7 @@ func (c *Context) WithContent(content interface{}) *Context {
 	return c
 }
 
-func (c *Context) withSign(sign string) *Context {
+func (c *Context) WithSign(sign string) *Context {
 	c.response.Sign = sign
 	return c
 }

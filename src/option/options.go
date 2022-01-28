@@ -24,6 +24,7 @@ type Http struct {
 	IdleTimeout  int    `long:"http.idle" default:"30"  description:"Timeout(seconds) for idle connection"`
 	ReadTimeout  int    `long:"http.read" default:"5" description:"Timeout(seconds) for read  client request"`
 	WriteTimeout int    `long:"http.write" default:"10" description:"Timeout(seconds) for write to client request"`
+	KeepAlive    bool   `long:"http.keepalive" description:"Keep-Alive"`
 }
 
 //Log logging settings

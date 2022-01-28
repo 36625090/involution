@@ -23,6 +23,7 @@ const (
 	CodeInvalidSignature        ReturnCode = 1008
 	CodeInvalidRequestParameter ReturnCode = 1009
 	CodeBindRequestData         ReturnCode = 1010
+	CodeHandleRequest           ReturnCode = 1011
 
 	CodeFailedDecodeArgs ReturnCode = 2001
 	CodeServiceException ReturnCode = 3001

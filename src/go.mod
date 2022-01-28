@@ -12,7 +12,7 @@ require (
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/go-various/consul v1.0.3
 	github.com/go-various/micro v1.0.1
-	github.com/go-various/redisplus v1.0.2
+	github.com/go-various/redisplus v1.0.3
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/consul/api v1.8.1
 	github.com/hashicorp/go-hclog v1.1.0

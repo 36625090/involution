@@ -11,8 +11,24 @@ import (
 	"runtime"
 )
 
+func (m *Server) unRegisterService()  {
+	if m.consulClient != nil{
+		m.consulClient.DeRegister(m.service)
+	}
+}
+
 //RegisterService 注册微服务
-func (m *Server) registerService(tags ...string) error {
+func (m *Server) registerService(tags...string) error {
+	if err := m.listenHealthy(tags...); err != nil {
+		return err
+	}
+	if m.consulClient != nil{
+		return m.consulClient.Register(m.service)
+	}
+	return nil
+}
+
+func (m *Server)listenHealthy(tags ...string)error{
 	addr := m.opts.Http.Address
 	if addr == "" || addr == "0.0.0.0" {
 		ip, err := utils.GetIP()
@@ -22,7 +38,6 @@ func (m *Server) registerService(tags ...string) error {
 		}
 		addr = ip
 	}
-
 	m.service = &consul.Service{
 		ID:             fmt.Sprintf("%s-%d-%d", m.opts.App, m.opts.Http.Port,rand.Int31()),
 		Schema:         "http",
@@ -37,6 +52,7 @@ func (m *Server) registerService(tags ...string) error {
 			consul.WanAddrKey: {Address: addr, Port: m.opts.Http.Port},
 		},
 	}
+
 	m.logger.Trace("register backend", "name", utils.JSONPrettyDump(m.service))
 
 	m.httpTransport.Handle("GET", filepath.Join(m.opts.Http.Path, "health") , func(c *gin.Context) {
@@ -48,6 +64,5 @@ func (m *Server) registerService(tags ...string) error {
 			"cpus":        runtime.NumCPU(),
 		})
 	})
-
-	return m.consulClient.Register(m.service)
+	return nil
 }

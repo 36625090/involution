@@ -43,10 +43,16 @@ func (m *Server) initBackendAPIServer() {
 		m.httpTransport.Use(m.loggerTracker(path))
 	}
 
-	m.httpTransport.AddHandle(path, logical.HttpMethodPOST, func(ctx *transport.Context) error {
-		var err error
+	m.httpTransport.AddHandle(path, logical.HttpMethodPOST, func(ctx *transport.Context) (err error) {
 		request := ctx.Request()
 		m.connection.Inc()
+		defer func() {
+			m.connection.Dec()
+			if err != nil{
+				m.connection.Error()
+			}
+		}()
+
 		backend, ok := m.backends[request.Backend()]
 
 		if !ok {
@@ -69,9 +75,7 @@ func (m *Server) initBackendAPIServer() {
 		args.Authorized = authorized
 		resp, werr := backend.HandleRequest(context.Background(), args)
 		if werr != nil {
-
 			ctx.WithCode(werr.Code).WithMessage(werr.String())
-
 			return werr.Error()
 		}
 

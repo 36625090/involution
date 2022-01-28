@@ -32,26 +32,26 @@ func (b *backend) userLogin(ctx context.Context, args *logical.Args, reply *logi
 	*dbUser.Mobile = user.Mobile
 	has, err := b.XormPlus.Get(&dbUser)
 	if err != nil {
-		reply.Code = 100
+		reply.Code = 101
 		reply.Message = err.Error()
 		return nil
 	}
 	if !has{
-		reply.Code = 101
+		reply.Code = 102
 		reply.Message = "user not found"
 		return nil
 	}
 
 	token, err := b.TokenHandler.GenerateToken(authorized)
 	if err != nil {
-		reply.Code = 100
+		reply.Code = 103
 		reply.Message = err.Error()
 		return nil
 	}
 
 	cb, _ := json.Marshal(authorized)
 	if err := b.RedisCli.Set(authorized.ID, cb, "1h"); err != nil {
-		reply.Code = 100
+		reply.Code = 104
 		reply.Message = err.Error()
 		return nil
 	}

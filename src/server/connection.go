@@ -3,19 +3,19 @@ package server
 import "sync/atomic"
 
 type Connection struct {
-	Active   uint64 `json:"active"`
+	Active   int64 `json:"active"`
 	Executed uint64 `json:"executed"`
 	Errors   uint64 `json:"errors"`
 }
 
 func (c *Connection) Inc() {
-	atomic.AddUint64(&c.Active, 1)
+	atomic.AddInt64(&c.Active, 1)
 	atomic.AddUint64(&c.Executed, 1)
 }
 
 func (c *Connection) Dec() {
-	if c.Active > 0{
-		atomic.StoreUint64(&c.Active, atomic.LoadUint64(&c.Active)-1)
+	if atomic.LoadInt64(&c.Active) > 0{
+		atomic.AddInt64(&c.Active, -1)
 	}
 }
 
