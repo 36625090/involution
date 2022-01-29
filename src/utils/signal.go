@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,11 +12,10 @@ import (
 func MakeShutdownCh() chan struct{} {
 	resultCh := make(chan struct{})
 
-	shutdownCh := make(chan os.Signal, 2)
+	shutdownCh := make(chan os.Signal, 1)
 	signal.Notify(shutdownCh, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		<-shutdownCh
-		log.Println("received shutdown signal")
 		close(resultCh)
 	}()
 	return resultCh
@@ -29,7 +27,7 @@ func MakeShutdownCh() chan struct{} {
 func MakeSighupCh() chan struct{} {
 	resultCh := make(chan struct{})
 
-	signalCh := make(chan os.Signal, 4)
+	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGHUP)
 	go func() {
 		for {
