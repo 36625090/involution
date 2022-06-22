@@ -1,33 +1,26 @@
 package logging
 
 import (
-	"fmt"
 	"github.com/36625090/involution/option"
 	"github.com/36625090/involution/utils"
 	"github.com/hashicorp/go-hclog"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"time"
 )
 
-type flush struct {
-
-}
-
-func (f flush) Flush() error {
-	panic("implement me")
-}
+const rotationInterval =  time.Hour * 24
 
 type _logging struct {
-	app string
-	option option.Log
-	files []*os.File
-	opts *hclog.LoggerOptions
-	logger hclog.InterceptLogger
+	app     string
+	option  option.Log
+	files   []*os.File
+	opts    *hclog.LoggerOptions
+	logger  hclog.InterceptLogger
 	sigChan chan struct{}
 }
+
 func (l _logging) Flush() error {
 	l.close()
 	l.rename()
@@ -36,33 +29,31 @@ func (l _logging) Flush() error {
 	return err
 }
 
-func (l _logging) start()  {
+func (l _logging) start() {
 	resettable := l.logger.(hclog.OutputResettable)
-
-	timer := time.NewTimer( left() )
-	for{
+	timer := time.NewTimer(nextDayLeft())
+	defer timer.Stop()
+	for {
 		select {
 		case <-timer.C:
-			log.Println("resettable")
 			resettable.ResetOutputWithFlush(l.opts, &l)
-			timer.Reset( left()  )
+			time.Sleep(time.Second * 10)
+			timer.Reset(nextDayLeft())
 		case <-l.sigChan:
-			timer.Stop()
 			l.close()
 			return
-		case <-time.NewTicker(time.Millisecond * 800).C:
-			l.logger.Info("test rotation")
 		}
 	}
+
 }
 
-func (l _logging) close()  {
+func (l _logging) close() {
 	for _, file := range l.files {
 		file.Close()
 	}
 }
 
-func (l _logging) rename()  {
+func (l _logging) rename() {
 	for _, file := range l.files {
 		rename(file)
 	}
@@ -70,16 +61,17 @@ func (l _logging) rename()  {
 
 var logging _logging
 
-
 //NewLogger 日志文件初始化方法，如有需要请自己实现日志轮转
 func NewLogger(app string, option option.Log) (hclog.InterceptLogger, error) {
-	os.Mkdir(option.Path, os.ModePerm)
+	if err := os.Mkdir(option.Path, os.ModePerm); err != nil && !os.IsExist(err) {
+		return nil, err
+	}
 
 	leveledWriter, err := openWriter(app, option)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(left())
+
 	opts := &hclog.LoggerOptions{
 		IncludeLocation: true,
 		Output:          leveledWriter,
@@ -95,14 +87,12 @@ func NewLogger(app string, option option.Log) (hclog.InterceptLogger, error) {
 		logging.logger = logger
 		logging.sigChan = utils.MakeShutdownCh()
 		go logging.start()
-	}
 
-	reset := logger.(hclog.OutputResettable)
-	fmt.Println(reset)
+	}
 	return logger, nil
 }
 
-func  openWriter(app string, option option.Log)(*hclog.LeveledWriter,error)  {
+func openWriter(app string, option option.Log) (*hclog.LeveledWriter, error) {
 
 	standard, err := open(option.Path, app, hclog.NoLevel)
 	if err != nil {
@@ -124,8 +114,6 @@ func  openWriter(app string, option option.Log)(*hclog.LeveledWriter,error)  {
 		hclog.NoLevel: standard,
 	})
 
-
-
 	return leveledWriter, nil
 }
 
@@ -141,14 +129,15 @@ func open(path, app string, level hclog.Level) (io.Writer, error) {
 
 }
 
-func rename(file *os.File)error{
+func rename(file *os.File) error {
 	//time.RFC3339 2006-01-02T15:04:05Z07:00
-	lastDay := time.Now().Add(-time.Hour).Format("2006-01-02_15-04")
-	newName := strings.Replace(file.Name(), ".log", "_"+lastDay+".log",4)
+	lastDay := time.Now().Add(-rotationInterval).Format("2006-01-02")
+	newName := strings.Replace(file.Name(), ".log", "_"+lastDay+".log", 4)
 	return os.Rename(file.Name(), newName)
 }
 
-func  left() time.Duration {
-	var inv int64 = 600
-	return time.Duration(inv - time.Now().Unix() % inv) * time.Second
+func nextDayLeft() time.Duration {
+	_, offset := time.Now().Zone()
+	var inv = int64(rotationInterval / time.Millisecond)
+	return time.Duration(inv - time.Now().UnixMilli() % inv - int64(offset * 1000)) * time.Millisecond
 }
