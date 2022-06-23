@@ -5,7 +5,6 @@ import (
 	"github.com/36625090/involution/utils"
 	"github.com/hashicorp/go-hclog"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -28,7 +27,9 @@ type rotatedLogging struct {
 }
 
 func (l *rotatedLogging) Flush() error {
-	l.close()
+	if err := l.close(); err != nil {
+		return err
+	}
 	if err := l.rename(); err != nil {
 		return err
 	}
@@ -41,12 +42,12 @@ func (l *rotatedLogging) start() {
 	resettable := l.logger.(hclog.OutputResettable)
 	timer := time.NewTimer(l.nextRoundOfMilliDuration())
 	defer timer.Stop()
-	log.Println("next round", l.nextRoundOfMilliDuration(), "at", time.Now().Add(l.nextRoundOfMilliDuration()).Format(time.RFC3339))
+	l.logger.Info("rotate logging", "next", time.Now().Add(l.nextRoundOfMilliDuration()).Format(time.RFC3339))
 	for {
 		select {
 		case <-timer.C:
 			resettable.ResetOutputWithFlush(l.opts, l)
-			log.Println("next round", l.nextRoundOfMilliDuration(), "at", time.Now().Add(l.nextRoundOfMilliDuration()).Format(time.RFC3339))
+			l.logger.Info("rotated logging", "next", time.Now().Add(l.nextRoundOfMilliDuration()).Format(time.RFC3339))
 			timer.Reset(l.nextRoundOfMilliDuration())
 		case <-l.sigChan:
 			l.close()
@@ -120,14 +121,15 @@ func NewLogger(app string, option option.Log) (hclog.InterceptLogger, error) {
 
 func (l *rotatedLogging) openWriter() (*hclog.LeveledWriter, error) {
 
-	standard, err := open(l.option.Path, l.app, hclog.NoLevel)
+	standard, err := l.openFile(hclog.NoLevel)
 	if err != nil {
 		return nil, err
 	}
-	trace, err := open(l.option.Path, l.app, hclog.Trace)
+	trace, err := l.openFile(hclog.Trace)
 	if err != nil {
 		return nil, err
 	}
+
 	l.files = []*os.File{standard.(*os.File), trace.(*os.File)}
 
 	if l.option.Console {
@@ -143,19 +145,19 @@ func (l *rotatedLogging) openWriter() (*hclog.LeveledWriter, error) {
 	return leveledWriter, nil
 }
 
-func open(path, app string, level hclog.Level) (io.Writer, error) {
+func (l *rotatedLogging) openFile(level hclog.Level) (io.Writer, error) {
 	var name string
 	if level == hclog.NoLevel {
-		name = strings.Join([]string{path, app + ".log"}, "/")
+		name = strings.Join([]string{l.option.Path, l.app + ".log"}, "/")
 	} else {
-		name = strings.Join([]string{path, app + "_" + level.String() + ".log"}, "/")
+		name = strings.Join([]string{l.option.Path, l.app + "_" + level.String() + ".log"}, "/")
 	}
 
 	return os.OpenFile(name, os.O_APPEND|os.O_CREATE|os.O_RDWR, os.ModePerm)
 
 }
 
-func (l rotatedLogging) rotateRename(file *os.File) error {
+func (l *rotatedLogging) rotateRename(file *os.File) error {
 	//time.RFC3339 2006-01-02T15:04:05Z07:00
 	var past string
 	if rotationPolicy(l.option.Rotate) == rotationPolicyDay {
