@@ -33,6 +33,7 @@ type Log struct {
 	Path    string `long:"log.path" default:"logs" required:"true" description:"Sets the path to log file"`
 	Level   string `long:"log.level" default:"info" description:"Sets the log level" choice:"info" choice:"warn" choice:"error" choice:"debug" choice:"trace" `
 	Format  string `long:"log.format" default:"text" description:"Sets the log format" choice:"text" choice:"json"`
+	Rotate  string `long:"log.rotate" default:"day" description:"Rotates the log" choice:"day" choice:"hour" `
 }
 
 //Options 服务参数选项（OOPs 英语不好，注释描述凑合看，写中文怕终端乱码 ^ - ^）

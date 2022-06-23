@@ -5,14 +5,20 @@ import (
 	"github.com/36625090/involution/utils"
 	"github.com/hashicorp/go-hclog"
 	"io"
+	"log"
 	"os"
 	"strings"
 	"time"
 )
 
-const rotationInterval =  time.Hour * 24
+type rotationPolicy string
 
-type _logging struct {
+const (
+	rotationPolicyDay  rotationPolicy = "day"
+	rotationPolicyHour rotationPolicy = "hour"
+)
+
+type rotatedLogging struct {
 	app     string
 	option  option.Log
 	files   []*os.File
@@ -21,24 +27,27 @@ type _logging struct {
 	sigChan chan struct{}
 }
 
-func (l _logging) Flush() error {
+func (l *rotatedLogging) Flush() error {
 	l.close()
-	l.rename()
-	writer, err := openWriter(l.app, l.option)
+	if err := l.rename(); err != nil {
+		return err
+	}
+	writer, err := l.openWriter()
 	l.opts.Output = writer
 	return err
 }
 
-func (l _logging) start() {
+func (l *rotatedLogging) start() {
 	resettable := l.logger.(hclog.OutputResettable)
-	timer := time.NewTimer(nextDayLeft())
+	timer := time.NewTimer(l.nextRoundOfMilliDuration())
 	defer timer.Stop()
+	log.Println("next round", l.nextRoundOfMilliDuration(), "at", time.Now().Add(l.nextRoundOfMilliDuration()).Format(time.RFC3339))
 	for {
 		select {
 		case <-timer.C:
-			resettable.ResetOutputWithFlush(l.opts, &l)
-			time.Sleep(time.Second * 10)
-			timer.Reset(nextDayLeft())
+			resettable.ResetOutputWithFlush(l.opts, l)
+			log.Println("next round", l.nextRoundOfMilliDuration(), "at", time.Now().Add(l.nextRoundOfMilliDuration()).Format(time.RFC3339))
+			timer.Reset(l.nextRoundOfMilliDuration())
 		case <-l.sigChan:
 			l.close()
 			return
@@ -47,27 +56,44 @@ func (l _logging) start() {
 
 }
 
-func (l _logging) close() {
+func (l *rotatedLogging) close() error {
 	for _, file := range l.files {
-		file.Close()
+		if err := file.Close(); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (l _logging) rename() {
+func (l *rotatedLogging) rename() error {
 	for _, file := range l.files {
-		rename(file)
+		if err := l.rotateRename(file); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-var logging _logging
+func (l *rotatedLogging) nextRoundOfMilliDuration() time.Duration {
+	policy := rotationPolicy(l.option.Rotate)
+	if policy == rotationPolicyHour {
+		return nextHourOfMilliDuration()
+	}
+	return nextDayOfMilliDuration()
+}
 
 //NewLogger 日志文件初始化方法，如有需要请自己实现日志轮转
 func NewLogger(app string, option option.Log) (hclog.InterceptLogger, error) {
+	logging := &rotatedLogging{
+		app:    app,
+		option: option,
+	}
+
 	if err := os.Mkdir(option.Path, os.ModePerm); err != nil && !os.IsExist(err) {
 		return nil, err
 	}
 
-	leveledWriter, err := openWriter(app, option)
+	leveledWriter, err := logging.openWriter()
 	if err != nil {
 		return nil, err
 	}
@@ -92,19 +118,19 @@ func NewLogger(app string, option option.Log) (hclog.InterceptLogger, error) {
 	return logger, nil
 }
 
-func openWriter(app string, option option.Log) (*hclog.LeveledWriter, error) {
+func (l *rotatedLogging) openWriter() (*hclog.LeveledWriter, error) {
 
-	standard, err := open(option.Path, app, hclog.NoLevel)
+	standard, err := open(l.option.Path, l.app, hclog.NoLevel)
 	if err != nil {
 		return nil, err
 	}
-	trace, err := open(option.Path, app, hclog.Trace)
+	trace, err := open(l.option.Path, l.app, hclog.Trace)
 	if err != nil {
 		return nil, err
 	}
-	logging.files = []*os.File{standard.(*os.File), trace.(*os.File)}
+	l.files = []*os.File{standard.(*os.File), trace.(*os.File)}
 
-	if option.Console {
+	if l.option.Console {
 		trace = io.MultiWriter(trace, os.Stdout)
 		standard = io.MultiWriter(standard, os.Stdout)
 	}
@@ -129,15 +155,26 @@ func open(path, app string, level hclog.Level) (io.Writer, error) {
 
 }
 
-func rename(file *os.File) error {
+func (l rotatedLogging) rotateRename(file *os.File) error {
 	//time.RFC3339 2006-01-02T15:04:05Z07:00
-	lastDay := time.Now().Add(-rotationInterval).Format("2006-01-02")
-	newName := strings.Replace(file.Name(), ".log", "_"+lastDay+".log", 4)
+	var past string
+	if rotationPolicy(l.option.Rotate) == rotationPolicyDay {
+		past = time.Now().Add(-time.Minute * 5).Format("2006-01-02")
+	} else {
+		past = time.Now().Add(-time.Minute * 5).Format("2006-01-02-15")
+	}
+
+	newName := strings.Replace(file.Name(), ".log", "_"+past+".log", 4)
 	return os.Rename(file.Name(), newName)
 }
 
-func nextDayLeft() time.Duration {
-	_, offset := time.Now().Zone()
-	var inv = int64(rotationInterval / time.Millisecond)
-	return time.Duration(inv - time.Now().UnixMilli() % inv - int64(offset * 1000)) * time.Millisecond
+func nextDayOfMilliDuration() time.Duration {
+	_, offset := time.Now().Local().Zone()
+	intervalDayOfMilli := int64(3600000 * 24)
+	return time.Duration(intervalDayOfMilli-time.Now().UnixMilli()%intervalDayOfMilli-int64(offset*1000)) * time.Millisecond
+}
+
+func nextHourOfMilliDuration() time.Duration {
+	intervalHourOfMilli := int64(3600000)
+	return time.Duration(intervalHourOfMilli-time.Now().UnixMilli()%intervalHourOfMilli) * time.Millisecond
 }
