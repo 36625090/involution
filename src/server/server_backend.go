@@ -35,7 +35,6 @@ func (m *Server) RegisterBackend(bkName string, factory logical.Factory, cfg *lo
 	return nil
 }
 
-
 func (m *Server) initBackendAPIServer() {
 
 	path := strings.Join([]string{m.opts.Http.Path, "api"}, "/")
@@ -48,7 +47,7 @@ func (m *Server) initBackendAPIServer() {
 		m.connection.Inc()
 		defer func() {
 			m.connection.Dec()
-			if err != nil{
+			if err != nil {
 				m.connection.Error()
 			}
 		}()
@@ -78,11 +77,10 @@ func (m *Server) initBackendAPIServer() {
 			ctx.WithCode(werr.Code).WithMessage(werr.String())
 			return werr.Error()
 		}
-		if resp.Code != 0{
+		if resp.Code != 0 {
 			ctx.WithCode(codes.ReturnCode(resp.Code)).WithMessage(resp.Message)
 			return nil
 		}
-		resp.Pagination = nil
 		ctx.WithContent(resp.Data)
 		ctx.WithPagination(resp.Pagination)
 		return nil
