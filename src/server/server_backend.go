@@ -78,9 +78,13 @@ func (m *Server) initBackendAPIServer() {
 			ctx.WithCode(werr.Code).WithMessage(werr.String())
 			return werr.Error()
 		}
-
-		ctx.WithContent(resp)
-
+		if resp.Code != 0{
+			ctx.WithCode(codes.ReturnCode(resp.Code)).WithMessage(resp.Message)
+			return nil
+		}
+		resp.Pagination = nil
+		ctx.WithContent(resp.Data)
+		ctx.WithPagination(resp.Pagination)
 		return nil
 	})
 

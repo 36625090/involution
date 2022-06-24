@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/36625090/involution/utils"
 )
 
 var errInvalidSign = errors.New("invalid signature")
@@ -25,7 +26,8 @@ func (m *signer) build(req Codec) *bytes.Buffer {
 	params := req.Map()
 	var buf bytes.Buffer
 	for _, v := range req.Keys() {
-		if v == "sign"{continue}
+		if v == "sign" {continue}
+		if utils.IsNil(params[v]){continue}
 		buf.WriteString(v)
 		buf.WriteString(fmt.Sprintf("%v", params[v]))
 	}
@@ -55,7 +57,6 @@ func (m *md5Signer) Sign(keyId string, resp Codec) (string, error) {
 
 	buf := m.build(resp)
 	buf.WriteString(key)
-
 	return m.md5(buf.Bytes()), nil
 }
 

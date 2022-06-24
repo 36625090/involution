@@ -7,8 +7,8 @@ import (
 )
 
 type Consul struct {
-	DC           string `long:"consul.dc" description:"Datacenter for consul cluster"`
-	Address      string `long:"consul.address" description:"Sets the consul address"`
+	DC           string `long:"consul.dc" default:"dc1" description:"Datacenter for consul cluster"`
+	Address      string `long:"consul.address" default:"127.0.0.1:8500" description:"Sets the consul address"`
 	AclToken     string `long:"consul.acl_token" description:"Token for consul config read"`
 	ConfigKey    string `long:"consul.config_key" description:"Key for consul config read"`
 	ConfigFormat string `long:"consul.config_format" default:"hcl" choice:"hcl" choice:"yaml" choice:"json" choice:"properties" description:"Format for config content"`

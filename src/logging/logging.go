@@ -161,9 +161,9 @@ func (l *rotatedLogging) rotateRename(file *os.File) error {
 	//time.RFC3339 2006-01-02T15:04:05Z07:00
 	var past string
 	if rotationPolicy(l.option.Rotate) == rotationPolicyDay {
-		past = time.Now().Add(-time.Minute * 5).Format("2006-01-02")
+		past = time.Now().Add(time.Minute * -15).Format("2006-01-02")
 	} else {
-		past = time.Now().Add(-time.Minute * 5).Format("2006-01-02-15")
+		past = time.Now().Add(time.Minute * -15).Format("2006-01-02-15")
 	}
 
 	newName := strings.Replace(file.Name(), ".log", "_"+past+".log", 4)

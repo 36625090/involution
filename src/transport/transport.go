@@ -45,7 +45,7 @@ func NewTransport(en *gin.Engine, settings *Settings, logger hclog.Logger) *Tran
 //path 绝对路径
 func (m *Transport) AddHandle(absolutePath string, method logical.HttpMethod, handle Handle) {
 	m.Engine.Handle(string(method), absolutePath, func(gCtx *gin.Context) {
-		ctx := m.pool.Get().(*Context)
+		ctx := NewContext(gCtx)
 		ctx.ctx = gCtx
 		ctx.response.TraceID = ctx.GetTraceID()
 

@@ -69,7 +69,7 @@ func (b *Backend) HandleRequest(ctx context.Context, req *logical.Args) (resp *l
 	if b.Logger.IsTrace() {
 		b.Logger.Trace("handle request before", "request", utils.JSONDump(req))
 	}
-	resp = new(logical.Reply)
+	resp = &logical.Reply{}
 	defer func() {
 		if b.Logger.IsTrace() {
 			b.Logger.Trace("handle request after", "response", utils.JSONDump(resp))

@@ -97,6 +97,10 @@ func (c *Context) WithContent(content interface{}) *Context {
 	c.response.Content = content
 	return c
 }
+func (c *Context) WithPagination(pagination interface{}) *Context {
+	c.response.Pagination = pagination
+	return c
+}
 
 func (c *Context) WithSign(sign string) *Context {
 	c.response.Sign = sign
@@ -104,5 +108,5 @@ func (c *Context) WithSign(sign string) *Context {
 }
 
 func (c *Context) write() {
-	c.ctx.SecureJSON(200, c.response)
+	c.ctx.JSON(200, c.response)
 }
