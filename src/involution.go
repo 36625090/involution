@@ -19,16 +19,15 @@ import (
 	_ "runtime/pprof"
 )
 
-
 type Involution interface {
 	//Initialize 服务初始化
 	Initialize() error
 
 	//RegisterBackend 注册后端逻辑端点
-	RegisterBackend(string, logical.Factory, *logical.BackendContext)error
+	RegisterBackend(string, logical.Factory, *logical.BackendContext) error
 
 	//RegisterAuthorization 注册验证接口，如微注册则不验证
-	RegisterAuthorization(authorization authorities.Authorization)error
+	RegisterAuthorization(authorization authorities.Authorization) error
 
 	//Start 启动服务
 	Start() error
@@ -38,22 +37,21 @@ type Involution interface {
 }
 
 //DefaultInvolution default
-func DefaultInvolution(opts *option.Options, factories  map[string]logical.Factory) (Involution, error) {
-	if opts.Pprof{
+func DefaultInvolution(opts *option.Options, factories map[string]logical.Factory) (Involution, error) {
+	if opts.Pprof {
 		go func() {
 			log.Println(http.ListenAndServe(opts.PprofAddr, nil))
 		}()
 	}
 
-	logger, err :=  logging.NewLogger(opts.App, opts.Log)
+	logger, err := logging.NewLogger(opts.App, opts.Log)
 	if err != nil {
 		return nil, err
 	}
 
 	globalConfig := &config.GlobalConfig{}
 
-	consulClient, err := initializeConfig(opts, globalConfig, logger)
-	if err != nil {
+	if err := initializeLocalConfig(opts, globalConfig); err != nil {
 		return nil, err
 	}
 
@@ -70,11 +68,21 @@ func DefaultInvolution(opts *option.Options, factories  map[string]logical.Facto
 		XormConfig:   globalConfig.XormConfig,
 		RedisConfig:  globalConfig.RedisConfig,
 		AuthSettings: globalConfig.Authorization,
-		Consul:       consulClient,
 		TokenHandler: authorization.TokenHandler(),
 	}
 
-	inv := server.NewServer(opts, globalConfig, consulClient, logger)
+	var client consul.Client
+	if opts.UseConsul {
+		client, err = initializeConsul(opts, logger)
+		if nil != err {
+			return nil, err
+		}
+		if err := initCentralConfig(client, globalConfig); err != nil {
+			return nil, err
+		}
+	}
+
+	inv := server.NewServer(opts, globalConfig, client, logger)
 	if err := inv.RegisterAuthorization(authorization); err != nil {
 		return nil, err
 	}
@@ -92,26 +100,28 @@ func DefaultInvolution(opts *option.Options, factories  map[string]logical.Facto
 	return inv, nil
 }
 
-func initializeConfig(opts *option.Options, globalConfig *config.GlobalConfig, logger hclog.Logger) (consul.Client, error) {
+//initializeLocalConfig 加载本地配置
+func initializeLocalConfig(opts *option.Options, globalConfig *config.GlobalConfig) error {
 	if opts.ConfigFile != "" {
 		bs, err := ioutil.ReadFile(opts.ConfigFile)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if err := hcl.Unmarshal(bs, globalConfig); err != nil {
-			return nil, err
+			return err
 		}
-		return nil, nil
 	}
+	return nil
+}
 
-	consulClient, err := consul.NewClient(opts.ConsulConfig(), logger)
-	if err != nil {
-		return nil, err
-	}
-	if err := consulClient.LoadConfig(globalConfig); err != nil {
-		return nil, err
-	}
-	return consulClient, nil
+//initializeConsul 初始化consul
+func initializeConsul(opts *option.Options, logger hclog.Logger) (consul.Client, error) {
+	return consul.NewClient(opts.ConsulConfig(), logger)
+}
+
+//initCentralConfig 加载中心化配置
+func initCentralConfig(client consul.Client, globalConfig *config.GlobalConfig) error {
+	return client.LoadConfig(globalConfig)
 }
 
 func initializeAuthorization(globalConfig *config.GlobalConfig, err error) (authorities.Authorization, error) {
@@ -127,7 +137,7 @@ func initializeAuthorization(globalConfig *config.GlobalConfig, err error) (auth
 
 	authorization, err := authorities.NewAuthorization(globalConfig.Authorization, tokenHandler)
 	if err != nil {
-		return nil,  errors.New("initialization authorization: " + err.Error())
+		return nil, errors.New("initialization authorization: " + err.Error())
 	}
-	return  authorization, nil
+	return authorization, nil
 }

@@ -36,3 +36,12 @@ redis{
   key_prefix = "my_prefix"
 }
 
+extras {
+  wechat {
+    app_id = 1233
+    app_name = "wechat"
+  }
+  alipay  {
+    name = ""
+  }
+}

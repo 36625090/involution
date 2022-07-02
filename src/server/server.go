@@ -113,7 +113,7 @@ func (m *Server) Start() error {
 			return
 		}
 	}()
-
+	m.listenHealthyEndpoint()
 	if err := m.registerService(m.opts.Profile); err != nil {
 		return err
 	}
@@ -147,10 +147,10 @@ func (m *Server) Stop() {
 }
 
 func (m *Server) Cleanup() {
-	if nil != m.httpServer{
+	if nil != m.httpServer {
 		m.httpServer.Close()
 	}
-	if m.netListener != nil{
+	if m.netListener != nil {
 		m.netListener.Close()
 	}
 	for _, backend := range m.backends {

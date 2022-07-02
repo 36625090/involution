@@ -11,24 +11,17 @@ import (
 	"runtime"
 )
 
-func (m *Server) unRegisterService()  {
-	if m.consulClient != nil{
+func (m *Server) unRegisterService() {
+	if m.consulClient != nil {
 		m.consulClient.DeRegister(m.service)
 	}
 }
 
 //RegisterService 注册微服务
-func (m *Server) registerService(tags...string) error {
-	if err := m.listenHealthyEndpoint(tags...); err != nil {
-		return err
+func (m *Server) registerService(tags ...string) error {
+	if m.consulClient == nil {
+		return nil
 	}
-	if m.consulClient != nil{
-		return m.consulClient.Register(m.service)
-	}
-	return nil
-}
-
-func (m *Server)listenHealthyEndpoint(tags ...string)error{
 	addr := m.opts.Http.Address
 	if addr == "" || addr == "0.0.0.0" {
 		ip, err := utils.GetIP()
@@ -39,7 +32,7 @@ func (m *Server)listenHealthyEndpoint(tags ...string)error{
 		addr = ip
 	}
 	m.service = &consul.Service{
-		ID:             fmt.Sprintf("%s-%d-%d", m.opts.App, m.opts.Http.Port,rand.Int31()),
+		ID:             fmt.Sprintf("%s-%d-%d", m.opts.App, m.opts.Http.Port, rand.Int31()),
 		Schema:         "http",
 		Name:           m.opts.App,
 		Address:        addr,
@@ -52,10 +45,14 @@ func (m *Server)listenHealthyEndpoint(tags ...string)error{
 			consul.WanAddrKey: {Address: addr, Port: m.opts.Http.Port},
 		},
 	}
+	return m.consulClient.Register(m.service)
+}
 
-	m.logger.Trace("register backend", "name", utils.JSONPrettyDump(m.service))
+func (m *Server) listenHealthyEndpoint() {
+	path := filepath.Join(m.opts.Http.Path, "/health")
+	m.logger.Trace("register health backend", "path", path)
 
-	m.httpTransport.Handle("GET", filepath.Join(m.opts.Http.Path, "/health") , func(c *gin.Context) {
+	m.httpTransport.Handle("GET", path, func(c *gin.Context) {
 
 		c.JSON(200, gin.H{
 			"status":      "UP",
@@ -64,5 +61,4 @@ func (m *Server)listenHealthyEndpoint(tags ...string)error{
 			"cpus":        runtime.NumCPU(),
 		})
 	})
-	return nil
 }

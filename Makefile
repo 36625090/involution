@@ -8,3 +8,9 @@ run-local:
 		--config ../config/config.hcl --log.console\
 		--log.path ../logs --app example --http.path=/example --ui --http.cors  \
 		--newrelic --newrelic.key 0f02f3f4e1f5e995e6e365c6fb08d310f12048fe --http.port 8081
+
+run-consul:
+	cd src && go run example/main.go --profile dev --log.level trace \
+		--config ../config/config.hcl --log.console --consul \
+		--log.path ../logs --app example --http.path=/example --ui --http.cors  \
+		--newrelic --newrelic.key 0f02f3f4e1f5e995e6e365c6fb08d310f12048fe --http.port 8081

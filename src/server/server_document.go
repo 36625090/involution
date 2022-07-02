@@ -11,9 +11,9 @@ import (
 )
 
 func (m *Server) addDocumentSchema() {
-	documentResponse := make([]logical.DocumentResponse,0)
+	documentResponse := make([]logical.DocumentResponse, 0)
 	for name, backend := range m.backends {
-		reply, _:= backend.Documents(context.Background())
+		reply, _ := backend.Documents(context.Background())
 		resp := logical.DocumentResponse{
 			Name:      backend.BackendDescription(),
 			Backend:   name,
@@ -22,28 +22,27 @@ func (m *Server) addDocumentSchema() {
 		documentResponse = append(documentResponse, resp)
 	}
 
-	path := filepath.Join(m.opts.Http.Path , "_m", "schemas")
-	m.httpTransport.GET( path, func(c *gin.Context) {
+	path := filepath.Join(m.opts.Http.Path, "_m", "schemas")
+	m.httpTransport.GET(path, func(c *gin.Context) {
 		c.SecureJSON(200, map[string]interface{}{
-			"code": 0,
+			"code":   0,
 			"result": documentResponse,
 		})
 	})
 
 }
 
-
 func (m *Server) addDocumentUI() {
 	fs := assetfs.AssetFS{Asset: ui.Asset, AssetDir: ui.AssetDir,
 		Prefix: "docs", Fallback: "index.html"}
-	path := filepath.Join(m.opts.Http.Path ,"docs")
-
+	path := filepath.Join(m.opts.Http.Path, "docs")
+	m.logger.Info("initial documents", "path", path)
 	urlPattern := filepath.Join(path, "/*filepath")
 	handle := createStaticHandler(path, &fs)
 
-	m.httpTransport.GET(urlPattern, handle )
+	m.httpTransport.GET(urlPattern, handle)
 
-	m.httpTransport.HEAD(urlPattern, handle )
+	m.httpTransport.HEAD(urlPattern, handle)
 }
 
 func createStaticHandler(relativePath string, fs http.FileSystem) gin.HandlerFunc {
@@ -59,8 +58,8 @@ func createStaticHandler(relativePath string, fs http.FileSystem) gin.HandlerFun
 		// Check if file exists and/or if we have permission to access it
 		f, err := fs.Open(file)
 		if err != nil {
-			if file != "/"{
-				c.Redirect(302,"index.html?api_url="+c.Query("api_url"))
+			if file != "/" {
+				c.Redirect(302, "index.html?api_url="+c.Query("api_url"))
 				return
 			}
 			c.Writer.WriteHeader(http.StatusNotFound)

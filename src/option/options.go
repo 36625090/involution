@@ -42,6 +42,7 @@ type Options struct {
 	Profile       string `long:"profile" description:" Profile for runtime"`
 	ConfigFile    string `long:"config" description:"Config file for runtime"`
 	Log           Log    `group:"log"`
+	UseConsul     bool   `long:"consul" description:"Enable consul"`
 	Consul        Consul `group:"consul"`
 	Http          Http   `group:"http"`
 	Pprof         bool   `long:"pprof" description:"Enable profiling"`
