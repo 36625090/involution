@@ -1,0 +1,34 @@
+kind: reverse
+name: mydb
+source:
+  database: mysql
+  conn_str: 'root:123456@/stock?charset=utf8'
+targets:
+  - type: codes
+    output_dir: models
+    table_mapper: snake # how table name map to class or struct name
+    column_mapper: snake # how column name map to class or struct field name
+    table_prefix: "t_" # table prefix
+    multiple_files: true # generate multiple files or one
+    language: golang
+    template: | # template for code file, it has higher perior than template_path
+      package models
+
+      {{$ilen := len .Imports}}
+      {{if gt $ilen 0}}
+      import (
+        {{range .Imports}}"{{.}}"{{end}}
+      )
+      {{end}}
+
+      {{range .Tables}}
+      type {{TableMapper .Name}} struct {
+      {{$table := .}}
+      {{range .ColumnsSeq}}{{$col := $table.GetColumn .}}	{{ColumnMapper $col.Name}}	*{{Type $col}} `{{Tag $table $col}} json:"{{$col.Name}}"`
+      {{end}}
+      }
+
+      func (m *{{TableMapper .Name}}) TableName() string {
+      	return "t_{{$table.Name}}"
+      }
+      {{end}}

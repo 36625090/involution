@@ -11,7 +11,7 @@
 * 接口支持数据签名 参考transport
 ##依赖组件
 * 注册中心 [consul]([https://www.consul.io])
-* 建模工具 [xormcmd](https://github.com/go-various/xormcmd)
+* 建模工具 [reverse](https://gitea.com/xorm/reverse)
 * 微服务客户端 [mirco](https://github.com/go-various/micro)
 * redis客户端 [redisplus](https://github.com/go-various/redisplus)
 * 数据库orm [xorm](https://github.com/go-various/xormplus)

@@ -36,7 +36,7 @@ func (m *Server) addDocumentUI() {
 	fs := assetfs.AssetFS{Asset: ui.Asset, AssetDir: ui.AssetDir,
 		Prefix: "docs", Fallback: "index.html"}
 	path := filepath.Join(m.opts.Http.Path, "docs")
-	m.logger.Info("initial documents", "path", path)
+	m.logger.Info("initialize handle", "path", path)
 	urlPattern := filepath.Join(path, "/*filepath")
 	handle := createStaticHandler(path, &fs)
 

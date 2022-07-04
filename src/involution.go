@@ -8,6 +8,7 @@ import (
 	"github.com/36625090/involution/logical"
 	"github.com/36625090/involution/option"
 	"github.com/36625090/involution/server"
+	"github.com/36625090/involution/transport"
 	"github.com/36625090/involution/utils"
 	"github.com/go-various/consul"
 	"github.com/hashicorp/go-hclog"
@@ -19,9 +20,13 @@ import (
 	_ "runtime/pprof"
 )
 
+
 type Involution interface {
 	//Initialize 服务初始化
 	Initialize() error
+
+	//AddHandle 添加http方法
+	AddHandle(path string, method logical.HttpMethod, handle func(*transport.Context, *server.HandlerParams) error)
 
 	//RegisterBackend 注册后端逻辑端点
 	RegisterBackend(string, logical.Factory, *logical.BackendContext) error

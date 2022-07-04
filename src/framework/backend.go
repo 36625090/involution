@@ -81,7 +81,6 @@ func (b *Backend) HandleRequest(ctx context.Context, req *logical.Args) (resp *l
 				req.Endpoint, "operation", req.Operation,
 				"error", err)
 		}
-
 		if err2 := recover(); nil != err2 {
 			b.Logger.Error("recover panic", "err", err2, "stack", string(debug.Stack()))
 			err = &logical.WrapperError{
